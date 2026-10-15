@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang='zh-CN' class='h-full bg-slate-50'>
+<head>
+<meta charset='UTF-8'>
+<title>MyCDMB - 登录</title>
+<script src='https://cdn.tailwindcss.com'></script>
+<style>[data-cloak]{display:none}</style>
+</head>
+<body class='h-full flex items-center justify-center'>
+<div x-data='login()' class='w-full max-w-sm bg-white rounded-xl shadow-lg p-8 border border-slate-200'>
+<h1 class='text-2xl font-bold text-center mb-1'>MyCDMB</h1>
+<p class='text-center text-sm text-slate-500 mb-6'>通信接入资源管理平台</p>
+<form @submit.prevent='doLogin' class='space-y-4'>
+<div><label class='block text-sm font-medium text-slate-700'>用户名</label>
+<input x-model='username' class='mt-1 w-full rounded-lg border border-slate-300 px-3 py-2' value='admin'></div>
+<div><label class='block text-sm font-medium text-slate-700'>密码</label>
+<input x-model='password' type='password' class='mt-1 w-full rounded-lg border border-slate-300 px-3 py-2' value='admin123'></div>
+<div x-show='error' class='text-red-600 text-sm' x-text='error'></div>
+<button :disabled='loading' class='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-2.5 rounded-lg'>
+<span x-show='!loading'>登录</span><span x-show='loading'>中...</span></button>
+</form>
+<p class='text-center text-xs text-slate-400 mt-4'>默认 admin / admin123</p>
+</div>
+<script defer src='https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js'></script>
+<script>
+function login(){return{
+username:'',password:'',loading:false,error:'',
+async doLogin(){
+this.loading=true;this.error='';
+try{
+const b=new URLSearchParams({username:this.username,password:this.password});
+const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+if(!r.ok) throw new Error('用户名或密码错误');
+const d=await r.json(); localStorage.setItem('token',d.access_token); location.href='/ui/index.html';
+}catch(e){this.error=e.message;}finally{this.loading=false;}
+}
+};}
+</script>
+</body></html>
