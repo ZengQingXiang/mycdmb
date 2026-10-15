@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang='zh-CN' class='h-full bg-slate-50'>
+<head>
+<meta charset='UTF-8'>
+<title>MyCDMB - 主页</title>
+<script src='https://cdn.tailwindcss.com'></script>
+<script defer src='https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js'></script>
+<style>[data-cloak]{display:none}</style>
+</head>
+<body class='h-full' x-data='app()' x-init='init()'>
+<nav class='bg-slate-800 text-white px-6 py-3 flex items-center justify-between'>
+<div class='flex items-center gap-6'>
+<h1 class='text-lg font-bold'>MyCDMB</h1>
+<div class='flex gap-1' x-cloak>
+<button @click='tab="query"' :class='tab==="query"?"bg-blue-600":"hover:bg-slate-700"' class='px-3 py-1.5 rounded text-sm'>接入查询</button>
+<button @click='tab="import"' :class='tab==="import"?"bg-blue-600":"hover:bg-slate-700"' class='px-3 py-1.5 rounded text-sm'>批量导入</button>
+<button @click='tab="topo"' :class='tab==="topo"?"bg-blue-600":"hover:bg-slate-700"' class='px-3 py-1.5 rounded text-sm'>节点拓扑</button>
+<button @click='tab="audit"' :class='tab==="audit"?"bg-blue-600":"hover:bg-slate-700"' class='px-3 py-1.5 rounded text-sm'>审计日志</button>
+</div></div>
+<div class='flex items-center gap-4'>
+<span x-show='me' class='text-sm text-slate-300'>{{ me.username }} <span class='text-xs bg-slate-600 rounded px-2 py-0.5' x-text='me.role'></span></span>
+<button @click='logout' class='text-sm text-slate-300 hover:text-white'>退出</button>
+</div></nav>
+<main class='max-w-6xl mx-auto p-6' x-cloak>
+<div x-show='tab==="query"' class='bg-white rounded-xl shadow border border-slate-200 overflow-hidden'>
+<div class='bg-slate-100 p-3 text-sm'>
+<input x-model='qIp' placeholder='管理IP' class='border rounded px-2 py-1 mx-1'>
+<input x-model='qMac' placeholder='MAC' class='border rounded px-2 py-1 mx-1'>
+<input x-model='qSn' placeholder='SN' class='border rounded px-2 py-1 mx-1'>
+<button @click='doQuery' class='bg-blue-600 text-white rounded px-3 py-1'>查询</button>
+</div>
+<table class='w-full text-sm'>
+<thead class='bg-slate-50'><tr><th class='p-2 text-left'>客户</th><th class='p-2 text-left'>CPE</th><th class='p-2 text-left'>节点</th><th class='p-2 text-left'>承载网</th></tr></thead>
+<tbody>
+<template x-for='l in links' :key='l.id'>
+<tr class='border-t'><td class='p-2' x-text='l.customer.name'></td>
+<td class='p-2 text-xs' x-text='l.cpe_device.device_type+" "+l.cpe_device.management_ip'></td>
+<td class='p-2' x-text='l.network_node.node_name'></td>
+<td class='p-2'><span class='bg-blue-100 text-blue-700 rounded px-2 py-0.5 text-xs' x-text='l.network_type'></span></td></tr>
+</template>
+</tbody></table>
+</div>
+<div x-show='tab==="import"' class='bg-white rounded-xl shadow p-4 border border-slate-200'>
+<a href='/api/import/template' class='inline-block bg-slate-200 hover:bg-slate-300 rounded px-3 py-1.5 text-sm mr-2'>⬇️ 下载模板</a>
+<input type='file' accept='.xlsx' @change='file=$event.target.files[0]' class='text-sm mr-2'>
+<button @click='doImport' :disabled='!file' class='bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded px-3 py-1.5 text-sm'>上传</button>
+<div x-show='importResult' class='mt-4 text-sm'>
+<div>总数 <b x-text='importResult.total'></b> / 成功 <span class='text-green-600' x-text='importResult.success'></span> / 失败 <span class='text-red-600' x-text='importResult.failed'></span></div>
+<div x-show='importResult.errors.length' class='mt-2 text-red-600 text-xs' x-for='e in importResult.errors' :key='e.row'>行 {{ e.row }}: {{ e.reason }}</div>
+</div></div>
+<div x-show='tab==="topo"' class='bg-white rounded-xl shadow p-4 border border-slate-200'>
+<input x-model='topoId' type='number' placeholder='节点ID' class='border rounded px-2 py-1 mr-2'>
+<button @click='doTopo' class='bg-blue-600 text-white rounded px-3 py-1 text-sm'>查拓扑</button>
+<div x-show='topo' class='mt-4 text-sm'>
+<div class='font-bold'>中心：{{ topo.center.name }} <span class='text-xs text-blue-600'>{{ topo.center.type }}</span></div>
+<div class='mt-2 text-xs'>⬆️ 父节点 <span x-text='topo.parent ? topo.parent.name : "—"'></span></div>
+<div class='mt-2 text-xs'>⬅️ 上游（{{ topo.upstream.length }}）</div>
+<div x-for='e in topo.upstream' :key='e.id' class='text-xs text-slate-600 px-2 py-0.5'><span x-text='e.src.name'></span> → <span x-text='e.dst.name'></span></div>
+<div class='mt-2 text-xs'>➡️ 下游（{{ topo.downstream.length }}）</div>
+<div x-for='e in topo.downstream' :key='e.id' class='text-xs text-slate-600 px-2 py-0.5'><span x-text='e.src.name'></span> → <span x-text='e.dst.name'></span></div>
+</div></div>
+<div x-show='tab==="audit"' class='bg-white rounded-xl shadow border border-slate-200 overflow-hidden'>
+<table class='w-full text-sm'>
+<thead class='bg-slate-50'><tr><th class='p-2 text-left'>时间</th><th class='p-2 text-left'>用户</th><th class='p-2 text-left'>操作</th><th class='p-2 text-left'>对象</th><th class='p-2 text-left'>URL</th></tr></thead>
+<tbody>
+<template x-for='a in audits' :key='a.id'>
+<tr class='border-t hover:bg-slate-50'>
+<td class='p-2 text-xs text-slate-500' x-text='a.created_at'></td>
+<td class='p-2' x-text='a.username'></td>
+<td class='p-2'><span :class='{"bg-green-100 text-green-700":a.action==="INSERT","bg-yellow-100 text-yellow-700":a.action==="UPDATE","bg-red-100 text-red-700":a.action==="DELETE"}' class='rounded px-2 py-0.5 text-xs' x-text='a.action'></span></td>
+<td class='p-2 text-xs' x-text='a.entity_type+"#"+a.entity_id'></td>
+<td class='p-2 text-xs text-slate-500' x-text='a.method+" "+a.url'></td>
+</tr>
+</template>
+</tbody></table>
+</div>
+</main>
+<script>
+function app(){
+const API='/api', h=()=>({Authorization:'Bearer '+localStorage.getItem('token')});
+return{
+tab:'query', me:null, links:[], qIp:'', qMac:'', qSn:'', file:null, importResult:null,
+topoId:'', topo:null, audits:[],
+async init(){
+try{const r=await fetch(API+'/auth/me',{headers:h()}); if(!r.ok) throw 0; this.me=await r.json();}
+catch(e){location.href='/ui/login.html'; return;}
+this.loadLinks(); this.loadAudits();
+},
+logout(){localStorage.removeItem('token'); location.href='/ui/login.html';},
+async loadLinks(){
+const p=new URLSearchParams(); if(this.qIp)p.set('management_ip',this.qIp); if(this.qMac)p.set('mac_address',this.qMac); if(this.qSn)p.set('serial_number',this.qSn);
+this.links=await (await fetch(API+(p?'/cpe-devices?'+p:'/access-links?limit=500'))).json();
+},
+doQuery(){this.loadLinks();},
+async doImport(){
+if(!this.file) return; const fd=new FormData(); fd.append('file',this.file);
+const r=await fetch(API+'/import/access-links',{method:'POST',headers:h(),body:fd});
+this.importResult=await r.json(); this.loadLinks();
+},
+async doTopo(){const r=await fetch(API+'/node-connections/topology/'+this.topoId); this.topo=await r.json();},
+async loadAudits(){const r=await fetch(API+'/audit-logs?limit=100',{headers:h()}); this.audits=await r.json();}
+};
+}
+</script>
+</body></html>
